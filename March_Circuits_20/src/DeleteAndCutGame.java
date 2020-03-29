@@ -1,7 +1,13 @@
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.StringTokenizer;
 
-public class DeleteAndCutGame {
+//https://www.hackerearth.com/practice/algorithms/graphs/breadth-first-search/practice-problems/algorithm/delete-and-cut-game-91969de1/description/
+//this is causing stackoverflow, not sure why, same as solution below:
+//https://www.hackerearth.com/submission/39123300/
+class DeleteAndCutGame {
 
     public static void main(String[] args) {
         FastScanner fs = new FastScanner();
@@ -14,52 +20,12 @@ public class DeleteAndCutGame {
             g.addEdge(u, v);
         }
         Bridge bridge = new Bridge(g);
-        List<List<Integer>> bridges = bridge.getBridgesList();
-        int total = bridges.size();
-        int a = 0, b = 0;
-        for (List<Integer> list : bridges) {
-            int u = list.get(0);
-            int v = list.get(1);
-            g.adj[u].remove((Integer) v);
-            g.adj[v].remove((Integer) u);
-            ConnectedComponents cc = new ConnectedComponents(g);
-            Set<Integer> set = new HashSet<>();
-            for (int i : cc.id) {
-                set.add(cc.size(i));
-            }
-            int countOdd = 0;
-            for (int i : set) {
-                if (i % 2 != 0) {
-                    countOdd++;
-                }
-            }
-            if (countOdd > 0) b++;
-            else a++;
-            g.adj[u].add(v);
-            g.adj[v].add(u);
-        }
-        long totalInv1, totalInv2;
-        int total1 = total, total2 = total;
-        if (a == 0) {
-            System.out.println(0 + " " + 1);
-        } else if (b == 0) {
-            System.out.println(1 + " " + 0);
-        } else {
-            //reduce to coprime numbers
-            int atg = gcd(a, total);
-            if (atg != 1) {
-                a = a / atg;
-                total1 = total / atg;
-            }
-            totalInv1 = a * modInv(total1, 1000000007);
-
-            int btg = gcd(b, total);
-            if (btg != 1) {
-                b = b / btg;
-                total2 = total / btg;
-            }
-            totalInv2 = b * modInv(total2, 1000000007);
-            System.out.println(totalInv1 + " " + totalInv2);
+        int total = bridge.bridgesList.size();
+        int evenBridges = bridge.evenBridges;
+        if (total == 0) System.out.println(0 + " " + 0);
+        else {
+            System.out.println(evenBridges * modInv(total, 1000000007) + " "
+                    + (total - evenBridges) * modInv(total, 1000000007));
         }
     }
 
@@ -197,11 +163,14 @@ public class DeleteAndCutGame {
         private int count;
         private int[] pre;  //pre[v] = order in which dfs examines v --> just an id for each v when doing DFS
         private int[] low;  //low[v] = lowest preorder of any vertex connected to v --> lowest id reachable from v
+        private int[] size;
+        private int evenBridges;
         private List<List<Integer>> bridgesList;
 
         public Bridge(Graph G) {
             low = new int[G.V()];
             pre = new int[G.V()];
+            size = new int[G.V()];
             Arrays.fill(low, -1);
             Arrays.fill(pre, -1);
             bridgesList = new ArrayList<>();
@@ -219,10 +188,12 @@ public class DeleteAndCutGame {
         private void dfs(Graph G, int u, int v) {
             pre[v] = count++;
             low[v] = pre[v];
+            size[v] = 1;
             for (int w : G.adj(v)) {
                 if (pre[w] == -1) {
                     dfs(G, v, w);
                     low[v] = Math.min(low[v], low[w]);
+                    size[v] += size[w];
                     if (low[w] > pre[v]) {
                         //System.out.println(v + "-" + w + " is a bridge");
                         List<Integer> bridge = new ArrayList<>();
@@ -230,6 +201,7 @@ public class DeleteAndCutGame {
                         bridge.add(w);
                         bridgesList.add(bridge);
                         bridges++;
+                        if (size[v] % 2 == 0 && (G.V() - size[v]) % 2 == 0) evenBridges++;
                     }
                 } else if (w != u) {
                     low[v] = Math.min(low[v], pre[w]);
@@ -239,63 +211,6 @@ public class DeleteAndCutGame {
 
         public List<List<Integer>> getBridgesList() {
             return bridgesList;
-        }
-    }
-
-    static class ConnectedComponents {
-
-        private boolean[] marked;
-        private int[] id;    //id of a connected component
-        private int[] size;  //size of connected component with given id
-        private int count;   //connected components count
-
-        public ConnectedComponents(Graph G) {
-            marked = new boolean[G.V()];
-            id = new int[G.V()];
-            size = new int[G.V()];
-            for (int v = 0; v < G.V(); v++) {
-                if (!marked[v]) {
-                    dfs(G, v);
-                    count++;
-                }
-            }
-        }
-
-        private void dfs(Graph G, int v) {
-            marked[v] = true;
-            id[v] = count;
-            size[count]++;
-            for (int w : G.adj(v)) {
-                if (!marked[w]) {
-                    dfs(G, w);
-                }
-            }
-        }
-
-        public int id(int v) {
-            validateVertex(v);
-            return id[v];
-        }
-
-        public int size(int v) {
-            validateVertex(v);
-            return size[id[v]];
-        }
-
-        public int count() {
-            return count;
-        }
-
-        public boolean connected(int v, int w) {
-            validateVertex(v);
-            validateVertex(w);
-            return id(v) == id(w);
-        }
-
-        private void validateVertex(int v) {
-            int V = marked.length;
-            if (v < 0 || v >= V)
-                throw new IllegalArgumentException("vertex " + v + " is not between 0 and " + (V - 1));
         }
     }
 }
